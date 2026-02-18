@@ -1,4 +1,4 @@
-name: Fog Kernel AOSP Production
+name: Fog Kernel AOSP Android 13
 
 on:
   workflow_dispatch:
@@ -15,11 +15,11 @@ jobs:
           fetch-depth: 1
           path: kernel
 
-      - name: Setup Swap Space
-        # Crucial for Full LTO linking which crashed your phone
+      - name: Setup Swap Space (14GB)
+        # Android 13 kernels with Full LTO need significant memory to link vmlinux
         run: |
           sudo swapoff -a
-          sudo dd if=/dev/zero of=/swapfile bs=1G count=12
+          sudo dd if=/dev/zero of=/swapfile bs=1G count=14
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
           sudo swapon /swapfile
@@ -29,28 +29,26 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc build-essential flex bison libssl-dev libelf-dev clang lld llvm python3 git curl
 
-      - name: Download AOSP Toolchains
+      - name: Download AOSP Toolchains (Shallow)
         run: |
           mkdir toolchain
           cd toolchain
-          # Clone the AOSP Clang host repo (using master branch to find r416183b1)
-          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 clang
-          # Clone GCC 64 and 32
-          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 gcc64
-          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-android-4.9 gcc32
+          # Cloning specific branches to avoid the "repo not found" or "huge download" errors
+          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 -b master clang
+          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b master gcc64
+          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-android-4.9 -b master gcc32
 
       - name: Build Kernel
         run: |
           cd kernel
-          # Important: Point the path to the specific AOSP Clang version folder inside the repo
-          export CLANG_DIR=$GITHUB_WORKSPACE/toolchain/clang/clang-r416183b1
+          # We use the T-release Clang version (r450784d) found inside the prebuilts
+          export CLANG_DIR=$GITHUB_WORKSPACE/toolchain/clang/clang-r450784d
           export PATH=$CLANG_DIR/bin:$GITHUB_WORKSPACE/toolchain/gcc64/bin:$GITHUB_WORKSPACE/toolchain/gcc32/bin:$PATH
           
           # 1. Setup Config
           make O=out ARCH=arm64 vendor/fog-perf_defconfig
           
-          # 2. Compile
-          # We use the full LLVM=1 suite for the most performance
+          # 2. Compile with Android 13 Flags
           make -j$(nproc --all) O=out \
                ARCH=arm64 \
                CC=clang \
@@ -63,7 +61,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Fog-LTO-Kernel
+          name: Fog-Android13-Kernel
           path: |
             kernel/out/arch/arm64/boot/Image
             kernel/out/arch/arm64/boot/Image.gz
