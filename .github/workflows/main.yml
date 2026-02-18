@@ -43,7 +43,7 @@ jobs:
           export PATH=$GITHUB_WORKSPACE/toolchain/clang/bin:$PATH
           
           # 1. Setup Config
-          make O=out ARCH=arm64 vendor/fog_custom_defconfig
+          make O=out ARCH=arm64 vendor/fog-perf_defconfig
           
           # 2. Compile
           # full LLVM suite to ensure consistency
