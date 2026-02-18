@@ -1,4 +1,4 @@
-name: Fog Kernel AOSP Android 13
+name: Fog Kernel Stable (Clang 15)
 
 on:
   workflow_dispatch:
@@ -16,7 +16,6 @@ jobs:
           path: kernel
 
       - name: Setup Swap Space (14GB)
-        # Android 13 kernels with Full LTO need significant memory to link vmlinux
         run: |
           sudo swapoff -a
           sudo dd if=/dev/zero of=/swapfile bs=1G count=14
@@ -29,39 +28,44 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc build-essential flex bison libssl-dev libelf-dev clang lld llvm python3 git curl
 
-      - name: Download AOSP Toolchains (Shallow)
+      - name: Download ZyC Clang 15
         run: |
           mkdir toolchain
           cd toolchain
-          # Cloning specific branches to avoid the "repo not found" or "huge download" errors
-          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 -b master clang
-          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b master gcc64
-          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-android-4.9 -b master gcc32
+          # stable Feb 2026 release of Clang 15
+          curl -LO https://github.com/ZyCromerZ/Clang/releases/download/15.0.7-20260208-release/Clang-15.0.7-20260208.tar.gz
+          mkdir clang
+          tar -xf Clang-15.0.7-20260208.tar.gz -C clang
 
       - name: Build Kernel
         run: |
           cd kernel
-          # We use the T-release Clang version (r450784d) found inside the prebuilts
-          export CLANG_DIR=$GITHUB_WORKSPACE/toolchain/clang/clang-r450784d
-          export PATH=$CLANG_DIR/bin:$GITHUB_WORKSPACE/toolchain/gcc64/bin:$GITHUB_WORKSPACE/toolchain/gcc32/bin:$PATH
+          export PATH=$GITHUB_WORKSPACE/toolchain/clang/bin:$PATH
           
           # 1. Setup Config
-          make O=out ARCH=arm64 vendor/fog-perf_defconfig
+          make O=out ARCH=arm64 vendor/fog_custom_defconfig
           
-          # 2. Compile with Android 13 Flags
+          # 2. Compile
+          # full LLVM suite to ensure consistency
           make -j$(nproc --all) O=out \
                ARCH=arm64 \
                CC=clang \
                CLANG_TRIPLE=aarch64-linux-gnu- \
-               CROSS_COMPILE=aarch64-linux-android- \
-               CROSS_COMPILE_ARM32=arm-linux-androideabi- \
+               CROSS_COMPILE=aarch64-linux-gnu- \
+               CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
                LLVM=1 \
-               LLVM_IAS=1
+               LLVM_IAS=1 \
+               LD=ld.lld \
+               AR=llvm-ar \
+               NM=llvm-nm \
+               OBJCOPY=llvm-objcopy \
+               OBJDUMP=llvm-objdump \
+               STRIP=llvm-strip
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Fog-Android13-Kernel
+          name: Fog-Stable-Kernel
           path: |
             kernel/out/arch/arm64/boot/Image
             kernel/out/arch/arm64/boot/Image.gz
