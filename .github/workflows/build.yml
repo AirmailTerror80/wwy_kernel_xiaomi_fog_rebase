@@ -29,36 +29,37 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc build-essential flex bison libssl-dev libelf-dev clang lld llvm python3 git curl
 
-      - name: Download Proton Clang
+      - name: Download AOSP Toolchains
         run: |
           mkdir toolchain
           cd toolchain
-          git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
+          # 1. Download AOSP Clang (The Compiler)
+          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/clang-r416183b1 clang
+          # 2. Download AOSP GCC 64-bit (The Linker/Binutils)
+          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 gcc64
+          # 3. Download AOSP GCC 32-bit (For vDSO/Compat)
+          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-android-4.9 gcc32
 
       - name: Build Kernel
         run: |
           cd kernel
-          export PATH=$GITHUB_WORKSPACE/toolchain/clang/bin:$PATH
+          # Set paths for all three toolchains
+          export PATH=$GITHUB_WORKSPACE/toolchain/clang/bin:$GITHUB_WORKSPACE/toolchain/gcc64/bin:$GITHUB_WORKSPACE/toolchain/gcc32/bin:$PATH
           
-          # 1. Clean and Setup Config
+          # 1. Setup Config
           make O=out ARCH=arm64 vendor/fog-perf_defconfig
           
-          # 2. Compile with Performance Optimizations
-          # We use -j$(nproc) for speed but LTO linking is done at the end
+          # 2. Compile with AOSP Clang Triple
+          # Note: CLANG_TRIPLE is required when using AOSP Clang
           make -j$(nproc --all) O=out \
                ARCH=arm64 \
                CC=clang \
-               CROSS_COMPILE=aarch64-linux-gnu- \
-               CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+               CLANG_TRIPLE=aarch64-linux-gnu- \
+               CROSS_COMPILE=aarch64-linux-android- \
+               CROSS_COMPILE_ARM32=arm-linux-androideabi- \
                LLVM=1 \
-               LLVM_IAS=1 \
-               LD=ld.lld \
-               AR=llvm-ar \
-               NM=llvm-nm \
-               OBJCOPY=llvm-objcopy \
-               OBJDUMP=llvm-objdump \
-               STRIP=llvm-strip
-
+               LLVM_IAS=1
+               
       - name: Prepare Artifacts
         run: |
           mkdir -p final_build
