@@ -1,4 +1,4 @@
-name: Fog Kernel Stable (Clang 15)
+name: Fog Kernel Stable (Clang 21)
 
 on:
   workflow_dispatch:
@@ -19,17 +19,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc build-essential flex bison libssl-dev libelf-dev clang lld llvm python3 git curl
 
-      - name: Download ZyC Clang 19
+      - name: Download ZyC Clang 21
         run: |
           mkdir clang
-          # Using a stable Clang 19 build from ZyCromerZ
-          curl -L https://github.com/ZyCromerZ/Clang/releases/download/19.1.0-20240920-release/Clang-19.1.0-20240920.tar.gz | tar -xzC clang
+          # Using Clang 21 build from ZyCromerZ
+          curl -L https://github.com/ZyCromerZ/Clang/releases/download/21.0.0git-20250715-release/Clang-21.0.0git-20250715.tar.gz | tar -xzC clang
           echo "$GITHUB_WORKSPACE/clang/bin" >> $GITHUB_PATH
 
       - name: Build Kernel
         run: |
           cd kernel
-          # Use the full LLVM suite
+          # Full LLVM suite
           make -j$(nproc --all) O=out \
                ARCH=arm64 \
                LLVM=1 \
