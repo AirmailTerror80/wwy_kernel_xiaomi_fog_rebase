@@ -1,4 +1,4 @@
-name: Fog Kernel Stable (Clang 21)
+name: Fog Kernel Stable (Clang 20)
 
 on:
   workflow_dispatch:
@@ -19,11 +19,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc build-essential flex bison libssl-dev libelf-dev clang lld llvm python3 git curl
 
-      - name: Download ZyC Clang 21
+      - name: Download ZyC Clang 20
         run: |
           mkdir clang
-          # Using Clang 21 build from ZyCromerZ
-          curl -L https://github.com/ZyCromerZ/Clang/releases/download/21.0.0git-20250715-release/Clang-21.0.0git-20250715.tar.gz | tar -xzC clang
+          # Using Clang 20 build from ZyCromerZ
+          curl -L https://github.com/ZyCromerZ/Clang/releases/download/20.0.0git-20250129-release/Clang-20.0.0git-20250129.tar.gz | tar -xzC clang
           echo "$GITHUB_WORKSPACE/clang/bin" >> $GITHUB_PATH
 
       - name: Build Kernel
@@ -55,7 +55,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Fog-Stable-Kernel
+          name: Fog-test-Kernel
           path: |
             kernel/out/arch/arm64/boot/Image
             kernel/out/arch/arm64/boot/Image.gz
