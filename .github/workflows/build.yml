@@ -14,16 +14,6 @@ jobs:
           ref: makeine-staging
           fetch-depth: 1
           path: kernel
-
-      - name: Setup Swap Space (For LTO)
-        # Full LTO needs massive RAM for linking. This adds 10GB of virtual RAM.
-        run: |
-          sudo swapoff -a
-          sudo dd if=/dev/zero of=/swapfile bs=1G count=10
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
-
       - name: Install Dependencies
         run: |
           sudo apt-get update
