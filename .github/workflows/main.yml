@@ -14,15 +14,6 @@ jobs:
           ref: makeine-staging
           fetch-depth: 1
           path: kernel
-
-      - name: Setup Swap Space (14GB)
-        run: |
-          sudo swapoff -a
-          sudo dd if=/dev/zero of=/swapfile bs=1G count=14
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
-
       - name: Install Build Essentials
         run: |
           sudo apt-get update
@@ -46,7 +37,6 @@ jobs:
           make O=out ARCH=arm64 vendor/fog-perf_defconfig
           
           # 2. Compile
-          # full LLVM suite to ensure consistency
           make -j$(nproc --all) O=out \
                ARCH=arm64 \
                CC=clang \
@@ -54,13 +44,7 @@ jobs:
                CROSS_COMPILE=aarch64-linux-gnu- \
                CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
                LLVM=1 \
-               LLVM_IAS=1 \
-               LD=ld.lld \
-               AR=llvm-ar \
-               NM=llvm-nm \
-               OBJCOPY=llvm-objcopy \
-               OBJDUMP=llvm-objdump \
-               STRIP=llvm-strip
+               LLVM_IAS=1
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
